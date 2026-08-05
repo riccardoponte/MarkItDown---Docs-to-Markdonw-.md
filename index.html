@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MarkItDown Web Pro - Layout Analysis</title>
+    <title>MarkItDown Pro — Layout Analysis</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -17,71 +17,220 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s ease; border-radius: 1.5rem; }
-        .drop-zone.drag-over { border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.01); }
-        #loader { display: none; }
-        .prose h1 { color: #1e293b; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
-        .prose h2 { color: #334155; font-weight: 700; margin-top: 2rem; }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        :root{
+            --paper:#f6f6f3;
+            --paper-panel:#ffffff;
+            --ink:#14162b;
+            --ink-soft:#585c72;
+            --blueprint:#2451b0;
+            --blueprint-dim:#c4d2ef;
+            --redline:#c8402a;
+            --grid-line:#dfe2ea;
+        }
+
+        body{
+            font-family:'Inter', sans-serif;
+            background-color:var(--paper);
+            color:var(--ink);
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 32px 32px;
+            background-position: -1px -1px;
+        }
+
+        .font-display{ font-family:'Space Grotesk', sans-serif; letter-spacing:-0.01em; }
+        .font-mono{ font-family:'JetBrains Mono', monospace; }
+
+        .eyebrow{
+            font-family:'JetBrains Mono', monospace;
+            font-size:0.72rem;
+            letter-spacing:0.14em;
+            text-transform:uppercase;
+            color:var(--blueprint);
+        }
+
+        /* ---- drop zone: analysis frame with corner brackets ---- */
+        .scan-frame{
+            position:relative;
+            background:var(--paper-panel);
+            border:1px solid var(--grid-line);
+            border-radius:4px;
+            box-shadow: 0 1px 2px rgba(20,22,43,0.04);
+            transition: border-color .25s ease, box-shadow .25s ease, background-color .25s ease;
+        }
+        .scan-frame:hover{ box-shadow: 0 8px 28px rgba(20,22,43,0.07); }
+        .scan-frame.drag-over{
+            border-color: var(--blueprint);
+            background: #f2f6ff;
+        }
+        .corner{
+            position:absolute; width:22px; height:22px;
+            border-color: var(--ink); opacity:0.35;
+            transition: border-color .25s ease, opacity .25s ease;
+        }
+        .scan-frame.drag-over .corner{ border-color: var(--blueprint); opacity:1; }
+        .corner-tl{ top:14px; left:14px; border-top:2px solid; border-left:2px solid; }
+        .corner-tr{ top:14px; right:14px; border-top:2px solid; border-right:2px solid; }
+        .corner-bl{ bottom:14px; left:14px; border-bottom:2px solid; border-left:2px solid; }
+        .corner-br{ bottom:14px; right:14px; border-bottom:2px solid; border-right:2px solid; }
+
+        .tag{
+            font-family:'JetBrains Mono', monospace;
+            font-size:0.7rem;
+            letter-spacing:0.03em;
+            border:1px solid var(--grid-line);
+            background:var(--paper-panel);
+            color:var(--ink-soft);
+            padding:0.3rem 0.6rem;
+            border-radius:3px;
+        }
+        .tag b{ color:var(--ink); font-weight:600; }
+
+        .btn-primary{
+            background:var(--ink);
+            color:#fff;
+            font-family:'JetBrains Mono', monospace;
+            font-weight:500;
+            letter-spacing:0.02em;
+            transition: background-color .2s ease, transform .15s ease;
+        }
+        .btn-primary:hover{ background:var(--blueprint); }
+        .btn-primary:active{ transform: translateY(1px); }
+
+        .btn-ghost{
+            background:transparent;
+            color:var(--ink);
+            border:1px solid var(--ink);
+            font-family:'JetBrains Mono', monospace;
+            font-weight:500;
+            transition: background-color .2s ease, color .2s ease;
+        }
+        .btn-ghost:hover{ background:var(--ink); color:#fff; }
+
+        #loader{ display:none; }
+        .progress-track{ background:var(--grid-line); }
+        .progress-fill{ background: var(--blueprint); }
+
+        .panel-label{
+            font-family:'JetBrains Mono', monospace;
+            font-size:0.72rem;
+            letter-spacing:0.12em;
+            text-transform:uppercase;
+            color:var(--ink-soft);
+        }
+
+        .panel-label .dot{
+            display:inline-block; width:6px; height:6px; border-radius:50%;
+            margin-right:6px; position:relative; top:-1px;
+        }
+        .dot-red{ background:var(--redline); }
+        .dot-blue{ background:var(--blueprint); }
+
+        code[id="markdownOutput"]{ font-family:'JetBrains Mono', monospace; }
+
+        .prose h1 { font-family:'Space Grotesk', sans-serif; color: var(--ink); font-weight: 700; border-bottom: 1px solid var(--grid-line); padding-bottom: 0.5rem; }
+        .prose h2 { font-family:'Space Grotesk', sans-serif; color: var(--ink); font-weight: 600; margin-top: 2rem; }
+        .prose a{ color: var(--blueprint); }
+
+        ::selection{ background: var(--blueprint-dim); }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-900">
+<body class="min-h-screen">
 
-    <div class="max-w-6xl mx-auto px-4 py-12">
-        <header class="text-center mb-10">
-            <h1 class="text-5xl font-extrabold text-slate-900 mb-3 tracking-tight">MarkItDown <span class="text-blue-600">Pro</span></h1>
-            <p class="text-slate-500 text-lg">Analisi intelligente del layout per PDF e documenti Office</p>
+    <div class="max-w-6xl mx-auto px-4 py-14">
+
+        <header class="mb-12">
+            <div class="flex items-center justify-between flex-wrap gap-4 mb-8">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 border-2 border-[var(--ink)] rounded-sm flex items-center justify-center">
+                        <span class="font-mono text-xs font-semibold">M↓</span>
+                    </div>
+                    <span class="font-mono text-sm tracking-wide text-[var(--ink-soft)]">markitdown / layout&nbsp;analysis</span>
+                </div>
+                <span class="tag">rilevamento titoli · attivo</span>
+            </div>
+
+            <p class="eyebrow mb-3">doc → md · analisi strutturale del layout</p>
+            <h1 class="font-display text-5xl md:text-6xl font-bold text-[var(--ink)] mb-4 leading-[1.05]">
+                Ogni documento<br>ha una struttura.<br><span class="text-[var(--blueprint)]">La leggiamo prima di convertirlo.</span>
+            </h1>
+            <p class="text-[var(--ink-soft)] text-lg max-w-2xl">
+                PDF, Word, Excel, PowerPoint e immagini scansionate: dimensione dei font, coordinate, gerarchia dei titoli e tabelle vengono analizzati riga per riga, poi trasformati in Markdown pulito.
+            </p>
         </header>
 
-        <main class="space-y-8">
-            <div id="dropZone" class="drop-zone bg-white p-16 text-center cursor-pointer shadow-xl border-2 transition-all">
+        <main class="space-y-10">
+
+            <div id="dropZone" class="scan-frame p-16 text-center cursor-pointer">
+                <span class="corner corner-tl"></span>
+                <span class="corner corner-tr"></span>
+                <span class="corner corner-bl"></span>
+                <span class="corner corner-br"></span>
+
                 <div class="flex flex-col items-center">
-                    <div class="bg-blue-600 p-5 rounded-2xl mb-6 shadow-lg shadow-blue-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <div class="border-2 border-[var(--ink)] p-5 rounded-sm mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[var(--ink)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <p class="text-2xl font-bold text-slate-800">Trascina i file per la conversione</p>
-                    <p class="text-slate-400 mt-2 font-medium">PDF con rilevamento titoli, Word, Excel, PPTX, OCR Immagini</p>
+                    <p class="font-display text-2xl font-semibold text-[var(--ink)]">Trascina i file qui per l'analisi</p>
+                    <p class="text-[var(--ink-soft)] mt-2">oppure fai clic per selezionarli dal disco</p>
+
+                    <div class="flex flex-wrap justify-center gap-2 mt-7">
+                        <span class="tag"><b>PDF</b> · titoli per font-size</span>
+                        <span class="tag"><b>DOCX</b> · struttura HTML</span>
+                        <span class="tag"><b>XLSX</b> · fogli → tabelle</span>
+                        <span class="tag"><b>PPTX</b> · slide + titoli</span>
+                        <span class="tag"><b>PNG/JPG</b> · OCR ita+eng</span>
+                        <span class="tag"><b>CSV/JSON</b></span>
+                    </div>
+
                     <input type="file" id="fileInput" class="hidden" multiple>
                 </div>
             </div>
 
-            <div id="loader" class="bg-white rounded-2xl p-8 shadow-lg border border-blue-100">
+            <div id="loader" class="scan-frame p-8">
                 <div class="flex items-center gap-6">
-                    <div class="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+                    <div class="animate-spin rounded-full h-7 w-7 border-2 border-[var(--blueprint)] border-t-transparent"></div>
                     <div class="flex-1">
-                        <p class="text-lg font-bold text-slate-700" id="statusText">Analisi del layout in corso...</p>
-                        <div class="w-full bg-slate-100 h-3 rounded-full mt-3 overflow-hidden">
-                            <div id="progressBar" class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        <p class="font-mono text-sm font-medium text-[var(--ink)]" id="statusText">Analisi del layout in corso...</p>
+                        <div class="w-full progress-track h-1.5 rounded-full mt-3 overflow-hidden">
+                            <div id="progressBar" class="progress-fill h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div id="resultArea" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center px-2">
-                        <span class="text-sm font-bold text-slate-400 uppercase tracking-widest">Markdown Source</span>
-                        <button id="copyBtn" class="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-700 transition shadow-md">Copia</button>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center px-1">
+                        <span class="panel-label"><span class="dot dot-red"></span>markdown source</span>
+                        <button id="copyBtn" class="btn-ghost px-4 py-2 rounded-sm text-xs">copia</button>
                     </div>
-                    <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
-                        <pre class="p-6 text-sm text-slate-300 font-mono h-[650px] overflow-auto leading-relaxed"><code id="markdownOutput"></code></pre>
+                    <div class="bg-[var(--ink)] rounded-sm overflow-hidden shadow-xl">
+                        <pre class="p-6 text-sm text-slate-200 font-mono h-[650px] overflow-auto leading-relaxed"><code id="markdownOutput"></code></pre>
                     </div>
                 </div>
-                
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center px-2">
-                        <span class="text-sm font-bold text-slate-400 uppercase tracking-widest">Live Preview</span>
-                        <button id="downloadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-500 transition shadow-md">Scarica .md</button>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center px-1">
+                        <span class="panel-label"><span class="dot dot-blue"></span>live preview</span>
+                        <button id="downloadBtn" class="btn-primary px-4 py-2 rounded-sm text-xs">scarica .md</button>
                     </div>
-                    <div class="bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200 h-[650px] overflow-auto">
+                    <div class="bg-[var(--paper-panel)] rounded-sm overflow-hidden shadow-xl border border-[var(--grid-line)] h-[650px] overflow-auto">
                         <div id="markdownPreview" class="p-12 prose prose-slate max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl"></div>
                     </div>
                 </div>
             </div>
         </main>
+
+        <footer class="mt-16 pt-6 border-t border-[var(--grid-line)] flex justify-between flex-wrap gap-2">
+            <span class="font-mono text-xs text-[var(--ink-soft)]">tutta l'elaborazione avviene nel browser · nessun file lascia questo dispositivo</span>
+            <span class="font-mono text-xs text-[var(--ink-soft)]">markitdown pro</span>
+        </footer>
     </div>
 
     <script>
@@ -99,6 +248,7 @@
 
         dropZone.onclick = () => fileInput.click();
         dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+        dropZone.ondragleave = () => { dropZone.classList.remove('drag-over'); };
         dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
         fileInput.onchange = (e) => handleFiles(e.target.files);
 
